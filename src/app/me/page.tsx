@@ -1,35 +1,60 @@
 import type { Metadata } from "next"
+import { api } from "../../../convex/_generated/api"
+import { fetchAuthQuery, isAuthenticated } from "@/lib/auth-server"
 import { CopyText } from "@/components/copy-text"
-import {
-  getCurrentUser,
-  getUserContributions,
-  getUserPurchases,
-  getRFSById,
-  rfsList,
-  skills,
-} from "@/lib/mock-data"
 import { AsciiBox } from "@/components/ascii-box"
 import { RFSRow } from "@/components/rfs-row"
+import { baseUnitsToNumber } from "@/lib/view-models"
 
 export const metadata: Metadata = { title: "Profile | Oboe" }
 
-export default function ProfilePage() {
-  const user = getCurrentUser()
-  const myRequests = rfsList.filter((rfs) => rfs.authorId === user.id)
-  const myContributions = getUserContributions(user.id)
-  const myPurchases = getUserPurchases(user.id)
+export default async function ProfilePage() {
+  if (!(await isAuthenticated())) {
+    return (
+      <main className="max-w-3xl mx-auto px-4 py-16">
+        <AsciiBox title="auth required">
+          <p className="text-sm text-muted-foreground font-mono">
+            sign in to view your profile, requests, contributions, and purchases.
+          </p>
+        </AsciiBox>
+      </main>
+    )
+  }
+
+  const dashboard = await fetchAuthQuery(api.users.getDashboard, {})
 
   return (
     <main className="max-w-3xl mx-auto px-4">
       <div className="mt-8 mb-6">
-        <h1 className="text-xl font-medium tracking-tight">{user.name}</h1>
-        <CopyText text={user.walletAddress} className="mt-1" />
+        <h1 className="text-xl font-medium tracking-tight">{dashboard.user.name}</h1>
+        {dashboard.user.walletAddress ? (
+          <CopyText text={dashboard.user.walletAddress} className="mt-1" />
+        ) : (
+          <p className="font-mono text-sm text-muted-foreground mt-1">no wallet linked yet</p>
+        )}
       </div>
 
       <div className="mt-6">
         <AsciiBox title="my requests">
-          {myRequests.length > 0 ? (
-            myRequests.map((rfs) => <RFSRow key={rfs.id} rfs={rfs} />)
+          {dashboard.requests.length > 0 ? (
+            dashboard.requests.map((rfs) => (
+              <RFSRow
+                key={rfs.id}
+                rfs={{
+                  id: rfs.id,
+                  title: rfs.title,
+                  description: "",
+                  scope: "",
+                  fundingThreshold: baseUnitsToNumber(rfs.fundingThresholdBaseUnits),
+                  currentAmount: baseUnitsToNumber(rfs.currentAmountBaseUnits),
+                  status: rfs.status === "cancelled" ? "fulfilled" : rfs.status,
+                  authorId: dashboard.user.id,
+                  claimantId: null,
+                  createdAt: new Date().toISOString(),
+                  authorLabel: "you",
+                }}
+              />
+            ))
           ) : (
             <p className="text-sm text-muted-foreground font-mono italic">
               no requests yet
@@ -40,17 +65,16 @@ export default function ProfilePage() {
 
       <div className="mt-6">
         <AsciiBox title="contributions">
-          {myContributions.length > 0 ? (
-            myContributions.map((contrib) => {
-              const rfs = getRFSById(contrib.rfsId)
+          {dashboard.contributions.length > 0 ? (
+            dashboard.contributions.map((contrib) => {
               return (
                 <div
                   key={contrib.id}
                   className="flex items-center justify-between py-1.5 font-mono text-sm"
                 >
-                  <span className="truncate">{rfs?.title}</span>
+                  <span className="truncate">{contrib.rfsTitle}</span>
                   <span className="text-muted-foreground ml-4 shrink-0">
-                    ${contrib.amount.toFixed(2)}
+                    ${baseUnitsToNumber(contrib.amountBaseUnits).toFixed(2)}
                   </span>
                 </div>
               )
@@ -65,17 +89,16 @@ export default function ProfilePage() {
 
       <div className="mt-6">
         <AsciiBox title="purchased">
-          {myPurchases.length > 0 ? (
-            myPurchases.map((purchase) => {
-              const skill = skills.find((s) => s.id === purchase.skillId)
+          {dashboard.purchases.length > 0 ? (
+            dashboard.purchases.map((purchase) => {
               return (
                 <div
                   key={purchase.id}
                   className="flex items-center justify-between py-1.5 font-mono text-sm"
                 >
-                  <span className="truncate">{skill?.title}</span>
+                  <span className="truncate">{purchase.skillTitle}</span>
                   <span className="text-muted-foreground ml-4 shrink-0">
-                    ${purchase.amount.toFixed(3)}
+                    ${baseUnitsToNumber(purchase.amountBaseUnits).toFixed(3)}
                   </span>
                 </div>
               )

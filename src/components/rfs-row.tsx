@@ -1,6 +1,5 @@
 import Link from "next/link"
 import type { RFS } from "@/lib/types"
-import { getUserById } from "@/lib/mock-data"
 import { StatusBadge } from "./status-badge"
 
 interface RFSRowProps {
@@ -9,8 +8,6 @@ interface RFSRowProps {
 }
 
 export function RFSRow({ rfs, rank }: RFSRowProps) {
-  const author = getUserById(rfs.authorId)
-
   return (
     <Link
       href={`/browse/${rfs.id}`}
@@ -26,11 +23,9 @@ export function RFSRow({ rfs, rank }: RFSRowProps) {
       <span className="w-28 text-right font-mono text-xs text-muted-foreground">
         ${rfs.currentAmount} / ${rfs.fundingThreshold}
       </span>
-      {author && (
-        <span className="text-xs text-muted-foreground w-24 truncate">
-          {author.name}
-        </span>
-      )}
+      <span className="text-xs text-muted-foreground w-24 truncate">
+        {rfs.authorLabel ?? rfs.authorId.slice(0, 10)}
+      </span>
     </Link>
   )
 }

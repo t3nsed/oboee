@@ -3,7 +3,7 @@ export type RFSStatus = "open" | "funded" | "fulfilled" | "published"
 export interface User {
   id: string
   name: string
-  walletAddress: string
+  walletAddress: string | null
 }
 
 export interface RFS {
@@ -17,6 +17,7 @@ export interface RFS {
   authorId: string
   claimantId: string | null
   createdAt: string
+  authorLabel?: string
 }
 
 export interface Contribution {

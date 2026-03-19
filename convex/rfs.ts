@@ -200,6 +200,36 @@ export const list = query({
   },
 });
 
+export const listContributions = query({
+  args: {
+    rfsId: v.id("rfs"),
+  },
+  returns: v.array(
+    v.object({
+      id: v.id("contributions"),
+      backerUserId: v.string(),
+      amountBaseUnits: v.int64(),
+      createdAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("contributions")
+      .withIndex("by_rfs", (q) => q.eq("rfsId", args.rfsId))
+      .order("desc")
+      .collect();
+
+    return rows
+      .filter((row) => row.status === "accepted")
+      .map((row) => ({
+        id: row._id,
+        backerUserId: row.backerUserId,
+        amountBaseUnits: row.amountBaseUnits,
+        createdAt: row._creationTime,
+      }));
+  },
+});
+
 export const claim = mutation({
   args: {
     rfsId: v.id("rfs"),

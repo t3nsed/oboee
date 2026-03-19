@@ -1,13 +1,12 @@
 import type { Metadata } from "next"
-import {
-  getRFSById,
-  getContributionsForRFS,
-  getSkillForRFS,
-  getUserById,
-} from "@/lib/mock-data"
+import { fetchQuery } from "convex/nextjs"
+import { api } from "../../../../convex/_generated/api"
+import type { Id } from "../../../../convex/_generated/dataModel"
 import { AsciiBox } from "@/components/ascii-box"
 import { ProgressBar } from "@/components/progress-bar"
 import { StatusBadge } from "@/components/status-badge"
+import { RfsActions } from "@/components/rfs-actions"
+import { baseUnitsToNumber } from "@/lib/view-models"
 
 export async function generateMetadata({
   params,
@@ -15,8 +14,12 @@ export async function generateMetadata({
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
-  const rfs = getRFSById(id)
-  return { title: rfs ? `${rfs.title} | Oboe` : "Not found | Oboe" }
+  try {
+    const detail = await fetchQuery(api.skills.get, { rfsId: id as Id<"rfs"> })
+    return { title: detail.rfs ? `${detail.rfs.title} | Oboe` : "Not found | Oboe" }
+  } catch {
+    return { title: "Not found | Oboe" }
+  }
 }
 
 export default async function Page({
@@ -25,7 +28,22 @@ export default async function Page({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const rfs = getRFSById(id)
+  const rfsId = id as Id<"rfs">
+
+  let detail: Awaited<ReturnType<typeof fetchQuery<typeof api.skills.get>>>
+
+  try {
+    detail = await fetchQuery(api.skills.get, { rfsId })
+  } catch {
+    return (
+      <div className="py-16 text-center text-muted-foreground font-mono text-sm">
+        rfs not found
+      </div>
+    )
+  }
+
+  const contributions = await fetchQuery(api.rfs.listContributions, { rfsId })
+  const rfs = detail.rfs
 
   if (!rfs) {
     return (
@@ -35,19 +53,20 @@ export default async function Page({
     )
   }
 
-  const author = getUserById(rfs.authorId)
-  const contributions = getContributionsForRFS(rfs.id)
-  const skill = getSkillForRFS(rfs.id)
+  const skill = detail.skill
+  const currentAmount = baseUnitsToNumber(rfs.currentAmountBaseUnits)
+  const fundingThreshold = baseUnitsToNumber(rfs.fundingThresholdBaseUnits)
+  const displayStatus = rfs.status === "cancelled" ? "fulfilled" : rfs.status
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 my-8">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">{rfs.title}</h1>
         <div className="mt-2">
-          <StatusBadge status={rfs.status} />
+          <StatusBadge status={displayStatus} />
         </div>
         <p className="text-sm text-muted-foreground font-mono mt-1">
-          by {author?.name}
+          by {rfs.authorUserId.slice(0, 10)}
         </p>
 
         <AsciiBox title="scope" className="mt-6">
@@ -59,7 +78,7 @@ export default async function Page({
           skill && (
             <AsciiBox title="skill preview" className="mt-6">
               <p className="text-sm leading-relaxed">
-                {skill.content.slice(0, 200)}...
+                {skill.contentMarkdown.slice(0, 200)}...
               </p>
               <p className="text-xs text-muted-foreground mt-2 font-mono">
                 buy to read full skill
@@ -70,13 +89,13 @@ export default async function Page({
 
       <div>
         <AsciiBox title="funding">
-          <ProgressBar current={rfs.currentAmount} goal={rfs.fundingThreshold} />
+          <ProgressBar current={currentAmount} goal={fundingThreshold} />
 
           <div className="mt-4 space-y-1 text-sm font-mono text-muted-foreground">
             <p>{contributions.length} backers</p>
             <p>
               created{" "}
-              {new Date(rfs.createdAt).toLocaleDateString("en-US", {
+              {new Date(rfs._creationTime).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
                 year: "numeric",
@@ -84,44 +103,28 @@ export default async function Page({
             </p>
           </div>
 
-          {rfs.status === "open" && (
-            <button type="button" className="w-full bg-gray-900 text-white font-mono text-sm px-4 py-2 rounded-md mt-4">
-              fund this request
-            </button>
-          )}
-          {rfs.status === "funded" && (
-            <button type="button" className="w-full bg-emerald-700 text-white font-mono text-sm px-4 py-2 rounded-md mt-4">
-              claim &amp; write this skill
-            </button>
-          )}
-          {rfs.status === "fulfilled" && (
-            <button
-              type="button"
-              className="w-full bg-gray-200 text-gray-500 font-mono text-sm px-4 py-2 rounded-md cursor-not-allowed mt-4"
-              disabled
-            >
-              under review
-            </button>
-          )}
-          {rfs.status === "published" && (
-            <button type="button" className="w-full bg-gray-900 text-white font-mono text-sm px-4 py-2 rounded-md mt-4">
-              buy for $0.005
-            </button>
-          )}
+          <RfsActions
+            rfsId={rfs._id}
+            status={displayStatus}
+            canFund={detail.canFund}
+            canClaim={detail.canClaim}
+            canBuy={detail.canBuy}
+            skillId={skill?._id}
+            hasSkill={Boolean(skill)}
+          />
 
           <div className="mt-4 border-t border-border pt-3">
             <h3 className="text-xs font-mono uppercase text-muted-foreground mb-2">
               backers
             </h3>
             {contributions.slice(0, 3).map((c) => {
-              const backer = getUserById(c.userId)
               return (
                 <div
                   key={c.id}
                   className="flex justify-between font-mono text-sm"
                 >
-                  <span>{backer?.name ?? "anon"}</span>
-                  <span>${c.amount.toFixed(2)}</span>
+                  <span>{c.backerUserId.slice(0, 10)}</span>
+                  <span>${baseUnitsToNumber(c.amountBaseUnits).toFixed(2)}</span>
                 </div>
               )
             })}

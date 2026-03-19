@@ -1,12 +1,19 @@
 import { OBOE_ASCII } from "@/lib/constants"
-import { rfsList } from "@/lib/mock-data"
+import { fetchQuery } from "convex/nextjs"
+import { api } from "../../convex/_generated/api"
 import { RFSRow } from "@/components/rfs-row"
 import { AsciiBox } from "@/components/ascii-box"
 import { CopyBox } from "@/components/copy-box"
+import { toRfsViewModel } from "@/lib/view-models"
 
-export default function Home() {
-  const openRequests = rfsList.filter(r => r.status === 'open')
-  const recentlyPublished = rfsList.filter(r => r.status === 'published').slice(0, 4)
+export default async function Home() {
+  const [openRows, publishedRows] = await Promise.all([
+    fetchQuery(api.rfs.list, { status: "open" }),
+    fetchQuery(api.rfs.list, { status: "published" }),
+  ])
+
+  const openRequests = openRows.map(toRfsViewModel)
+  const recentlyPublished = publishedRows.map(toRfsViewModel).slice(0, 4)
 
   return (
     <main className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-10 lg:gap-14 my-8">

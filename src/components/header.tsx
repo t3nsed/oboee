@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { authClient } from "@/lib/auth-client"
 
 const navLinks = [
   { href: "/browse", label: "browse" },
@@ -36,6 +37,29 @@ const pixelBorder = [
 
 export function Header() {
   const pathname = usePathname()
+  const { data: session } = authClient.useSession()
+
+  const handleSignIn = async () => {
+    const email = window.prompt("email")?.trim()
+    const password = window.prompt("password")?.trim()
+
+    if (!email || !password) {
+      return
+    }
+
+    const signInResult = await authClient.signIn.email({ email, password })
+    if (signInResult.error) {
+      const name = window.prompt("no account found. enter name to sign up")?.trim()
+      if (!name) {
+        return
+      }
+      await authClient.signUp.email({ email, password, name })
+    }
+  }
+
+  const handleSignOut = async () => {
+    await authClient.signOut()
+  }
 
   return (
     <header className="sticky top-0 z-50 flex justify-center pt-4 px-4">
@@ -70,6 +94,25 @@ export function Header() {
               {label}
             </Link>
           ))}
+          <div className="ml-2 pl-3 border-l border-gray-200">
+            {session?.user ? (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors duration-150"
+              >
+                {session.user.name} (sign out)
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSignIn}
+                className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors duration-150"
+              >
+                sign in
+              </button>
+            )}
+          </div>
         </nav>
       </div>
     </header>

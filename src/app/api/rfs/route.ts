@@ -37,10 +37,22 @@ export async function POST(request: Request) {
       typeof body.description !== "string" ||
       typeof body.scope !== "string" ||
       !Array.isArray(body.tags) ||
-      !body.tags.every((tag) => typeof tag === "string") ||
-      typeof body.fundingTokenAddress !== "string"
+      !body.tags.every((tag) => typeof tag === "string")
     ) {
       return errorResponse("INVALID_ARGUMENT", "Invalid create RFS payload.", 400);
+    }
+
+    const fundingTokenAddress =
+      typeof body.fundingTokenAddress === "string" && body.fundingTokenAddress.trim().length > 0
+        ? body.fundingTokenAddress
+        : process.env.MPP_FUNDING_TOKEN_ADDRESS;
+
+    if (!fundingTokenAddress) {
+      return errorResponse(
+        "INVALID_ARGUMENT",
+        "fundingTokenAddress is required when MPP_FUNDING_TOKEN_ADDRESS is unset.",
+        400,
+      );
     }
 
     const fundingThresholdBaseUnits = parseBaseUnits(body.fundingThresholdBaseUnits);
@@ -57,7 +69,7 @@ export async function POST(request: Request) {
       tags: body.tags,
       fundingThresholdBaseUnits,
       minimumContributionBaseUnits,
-      fundingTokenAddress: body.fundingTokenAddress,
+      fundingTokenAddress,
     });
 
     return okWriteResponse("rfs", result.rfsId, result.nextState);

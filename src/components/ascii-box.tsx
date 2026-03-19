@@ -5,10 +5,6 @@ interface AsciiBoxProps {
 }
 
 export function AsciiBox({ title, children, className }: AsciiBoxProps) {
-  const topLine = title ? `┌─ ${title} ` : "┌─"
-  const topPad = "─"
-  const topEnd = "─┐"
-
   return (
     <div className={`font-mono text-sm ${className ?? ""}`}>
       <div className="text-border select-none overflow-hidden whitespace-nowrap">
