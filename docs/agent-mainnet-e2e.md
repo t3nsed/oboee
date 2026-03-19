@@ -7,6 +7,7 @@ This is the minimal agent-only test/debug plan for Oboe on Tempo mainnet.
 - Use Tempo mainnet token config.
 - Keep every payment `< $0.01`.
 - Avoid user/profile flows for this pass.
+- Keep `MPP_ENABLE_FEE_PAYER=false` for MVP reliability; use transfer-hash credentials for paid retries.
 
 ## Route Set to Test
 
