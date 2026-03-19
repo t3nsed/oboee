@@ -16,8 +16,8 @@ export default async function Home() {
   const recentlyPublished = publishedRows.map(toRfsViewModel).slice(0, 4)
 
   return (
-    <main className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-10 lg:gap-14 my-8">
-      <div className="max-w-[390px]">
+    <main className="my-8 max-w-2xl mx-auto">
+      <div className="flex flex-col items-center text-center">
         <pre className="text-[15px] tracking-[-1px] leading-[125%] text-gray-400 select-none whitespace-pre font-[family-name:var(--font-fira-mono)]">
           {OBOE_ASCII}
         </pre>
@@ -35,7 +35,7 @@ export default async function Home() {
         </div>
       </div>
 
-      <div>
+      <div className="mt-16">
         <h2 className="text-sm font-mono font-medium tracking-normal text-gray-900 uppercase mb-4">
           open requests
         </h2>
@@ -44,17 +44,17 @@ export default async function Home() {
             <RFSRow key={rfs.id} rfs={rfs} rank={i + 1} />
           ))}
         </AsciiBox>
+      </div>
 
-        <div className="mt-8">
-          <h2 className="text-sm font-mono font-medium tracking-normal text-gray-900 uppercase mb-4">
-            recently published
-          </h2>
-          <AsciiBox title="published">
-            {recentlyPublished.map((rfs) => (
-              <RFSRow key={rfs.id} rfs={rfs} />
-            ))}
-          </AsciiBox>
-        </div>
+      <div className="mt-8">
+        <h2 className="text-sm font-mono font-medium tracking-normal text-gray-900 uppercase mb-4">
+          recently published
+        </h2>
+        <AsciiBox title="published">
+          {recentlyPublished.map((rfs) => (
+            <RFSRow key={rfs.id} rfs={rfs} />
+          ))}
+        </AsciiBox>
       </div>
     </main>
   )
