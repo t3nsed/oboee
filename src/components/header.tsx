@@ -39,24 +39,7 @@ const pixelBorder = [
 export function Header() {
   const pathname = usePathname()
   const { data: session } = authClient.useSession()
-
-  const handleSignIn = async () => {
-    const email = window.prompt("email")?.trim()
-    const password = window.prompt("password")?.trim()
-
-    if (!email || !password) {
-      return
-    }
-
-    const signInResult = await authClient.signIn.email({ email, password })
-    if (signInResult.error) {
-      const name = window.prompt("no account found. enter name to sign up")?.trim()
-      if (!name) {
-        return
-      }
-      await authClient.signUp.email({ email, password, name })
-    }
-  }
+  const nextPath = pathname === "/sign-in" ? "/me" : pathname
 
   const handleSignOut = async () => {
     await authClient.signOut()
@@ -105,13 +88,12 @@ export function Header() {
                 {session.user.name} (sign out)
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={handleSignIn}
+              <Link
+                href={`/sign-in?next=${encodeURIComponent(nextPath)}`}
                 className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors duration-150"
               >
                 sign in
-              </button>
+              </Link>
             )}
           </div>
         </nav>

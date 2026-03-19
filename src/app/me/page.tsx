@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { api } from "../../../convex/_generated/api"
 import { fetchAuthQuery, isAuthenticated } from "@/lib/auth-server"
 import { CopyText } from "@/components/copy-text"
@@ -14,7 +15,10 @@ export default async function ProfilePage() {
       <main className="max-w-3xl mx-auto px-4 py-16">
         <AsciiBox title="auth required">
           <p className="text-sm text-muted-foreground font-mono">
-            sign in to view your profile, requests, contributions, and purchases.
+            <Link href="/sign-in?next=%2Fme" className="underline underline-offset-2 text-foreground">
+              sign in
+            </Link>{" "}
+            to view your profile, requests, contributions, and purchases.
           </p>
         </AsciiBox>
       </main>
