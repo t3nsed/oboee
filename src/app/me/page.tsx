@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { CopyText } from "@/components/copy-text"
 import {
   getCurrentUser,
   getUserContributions,
@@ -22,9 +23,7 @@ export default function ProfilePage() {
     <main className="max-w-3xl mx-auto px-4">
       <div className="mt-8 mb-6">
         <h1 className="text-xl font-medium tracking-tight">{user.name}</h1>
-        <p className="font-mono text-sm text-muted-foreground mt-1">
-          {user.walletAddress}
-        </p>
+        <CopyText text={user.walletAddress} className="mt-1" />
       </div>
 
       <div className="mt-6">

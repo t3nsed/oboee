@@ -9,7 +9,7 @@ This plan covers API, auth, data, and MPP payment flows only. It excludes fronte
 - Convex backend and schema
 - BetterAuth + Convex integration
 - Human + agent JSON APIs
-- MPP-gated fund and buy flows
+- MPP-gated fund and content-purchase flows
 - Access control and payout accounting
 - Test strategy for 401/402/payment retry behavior
 
@@ -29,6 +29,7 @@ This plan covers API, auth, data, and MPP payment flows only. It excludes fronte
 - Payout split: 99% researcher / 1% platform fee
 - Claim model: open bounty, first atomic claim wins
 - Content entitlement: existing `AccessGrant` bypasses payment
+- Purchase revenue split: 99% researcher / 1% platform fee
 
 ## 3) Data model implementation (Convex)
 
@@ -38,6 +39,7 @@ Create `convex/schema.ts` with these tables and indexes.
 
 - Fields: `email`, `name`, `walletAddress`, timestamps
 - Indexes: `by_email`, `by_walletAddress`
+- Notes: wallet link is optional at signup but required for payout claim
 
 ### `rfs`
 
@@ -68,6 +70,7 @@ Create `convex/schema.ts` with these tables and indexes.
 - Fields:
   - `rfsId`, `authorUserId`
   - `contentMarkdown`, `summary`
+  - `tags`
   - `purchasePriceBaseUnits`
   - `status` (`draft` | `submitted` | `published`)
   - timestamps
@@ -98,6 +101,17 @@ Create `convex/schema.ts` with these tables and indexes.
   - `receiptReference` (for claim transfer)
   - timestamps
 - Indexes: `by_rfs`, `by_researcher`, `by_status`
+
+### `payoutEntries`
+
+- Fields:
+  - `rfsId`, `researcherUserId`
+  - `source` (`funding` | `purchase`)
+  - `grossAmountBaseUnits`, `platformFeeBaseUnits`, `netAmountBaseUnits`
+  - `status` (`claimable` | `claimed`)
+  - `claimGroupId` (nullable)
+  - timestamps
+- Indexes: `by_researcher_status`, `by_rfs`, `by_claimGroup`
 
 ### `paymentEvents`
 
@@ -147,6 +161,13 @@ Create `convex/schema.ts` with these tables and indexes.
   - `MPP_RECIPIENT_ESCROW_ADDRESS`
   - `MPP_FUNDING_TOKEN_ADDRESS`
 
+## 4.5 Wallet linking endpoint
+
+- `POST /api/me/wallet`
+  - authenticated
+  - validates chain address format
+  - stores `walletAddress` on user profile
+
 ## 5) API implementation plan
 
 Each endpoint returns deterministic JSON for agent use.
@@ -154,7 +175,7 @@ Each endpoint returns deterministic JSON for agent use.
 ### 5.1 Catalog and detail
 
 - `GET /api/skills`
-  - filters: `status`, `q`, `authorId`
+  - filters: `status`, `q`, `authorId`, `tags`
   - returns mixed list of open/funded RFS and published skills
 - `GET /api/skills/[id]`
   - returns full object + computed flags:
@@ -176,7 +197,7 @@ Each endpoint returns deterministic JSON for agent use.
   - only claimant can submit
   - creates/updates skill content
   - transitions `funded -> fulfilled -> published` in v1
-  - creates `payoutLedger` row (`locked -> claimable`)
+  - creates funding-based payout rows as claimable
 
 ### 5.3 MPP fund flow
 
@@ -189,34 +210,33 @@ Each endpoint returns deterministic JSON for agent use.
   - payment handling:
     - no credential: return `402` challenge with requested amount
     - credential retry: verify and persist payment
+    - verify `currencyAddress === rfs.fundingTokenAddress`
   - atomic post-payment update:
     - append contribution
     - increment `currentAmountBaseUnits`
     - if threshold crossed: transition `open -> funded`
   - idempotency: reject replayed `challengeId`
 
-### 5.4 MPP buy flow
+### 5.4 MPP content purchase flow
 
-- `POST /api/skills/[id]/buy`
-  - auth first
-  - if existing `AccessGrant`: return success immediately
-  - else issue/verify MPP challenge for `purchasePriceBaseUnits`
-  - on success:
-    - append purchase
-    - create `AccessGrant` with source `purchase`
-    - record payment event
 - `GET /api/skills/[id]/content`
   - auth required
-  - requires `AccessGrant`
-  - returns markdown content
+  - if existing `AccessGrant`: return markdown content
+  - else issue/verify MPP challenge for `purchasePriceBaseUnits`
+  - on paid retry:
+    - append purchase
+    - create `AccessGrant` with source `purchase`
+    - create purchase-based payout row with 99/1 split
+    - return markdown content + receipt reference
 
 ### 5.5 Payout claim
 
 - `POST /api/rfs/[id]/payout/claim`
-  - only claimant/researcher user
-  - requires `payoutLedger.status=claimable`
+  - only claimant/researcher user with linked payout wallet
+  - claims selected payout rows where `status=claimable`
+  - idempotency key required (`claimGroupId`) to prevent duplicate claims
   - creates payment transfer event (or records external transfer in v1)
-  - marks ledger `claimed`
+  - marks claimed payout rows `claimed`
 
 ## 6) Agent-facing response contracts
 
@@ -250,7 +270,7 @@ Authentication-required responses:
 
 ### 7.2 Backer unlock
 
-- On publish:
+- On publish (same atomic mutation as publish transition):
   - query all contributions for that RFS where amount >= minimum
   - create `AccessGrant` rows with source `backer_unlock`
 
@@ -260,13 +280,16 @@ Authentication-required responses:
 - `platformFee = floor(gross * 0.01)`
 - `net = gross - platformFee`
 
+Apply the same split to each non-backer purchase.
+
 ## 8) Security, integrity, and idempotency
 
-- Persist consumed `challengeId` for `fund` and `buy`
+- Persist consumed `challengeId` for `fund` and paid `content` calls
 - Enforce single claimant with atomic mutation
 - Validate all amount inputs as integer base units
 - Do not trust client entitlement flags; always resolve from DB
 - Store all receipt references for auditability
+- Make payout claims idempotent with `claimGroupId`
 
 ## 9) Testing plan (backend + agent-facing)
 
@@ -281,6 +304,7 @@ Authentication-required responses:
 - auth + API route behavior
 - `401 -> 402 -> 200` flow correctness
 - replay protection on duplicate challenge IDs
+- payout claim idempotency on retry
 
 ## 9.3 Payment flow tests with `mppx`
 
@@ -292,6 +316,7 @@ Authentication-required responses:
 
 - simultaneous `claim` race (only first wins)
 - simultaneous `fund` writes around threshold crossing
+- publish + backer unlock consistency under retries
 
 ## 10) Delivery phases
 
@@ -317,7 +342,7 @@ Authentication-required responses:
 
 ### Phase 4: Purchase and access
 
-- Build `POST /api/skills/[id]/buy` and `GET /api/skills/[id]/content`
+- Build MPP-gated `GET /api/skills/[id]/content`
 - Add access grant generation for backers and buyers
 
 ### Phase 5: Payout and hardening

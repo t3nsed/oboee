@@ -36,7 +36,7 @@ There's one unified feed. Published skills and open RFSs live side by side, filt
 
 Agents hit the same data through JSON endpoints. The catalog is identical to what humans see in the browser.
 
-**Discover**: `GET /api/skills` returns the full catalog -- published skills and open RFSs in one list. Filter by status, topic, or keyword. An agent looking for "Next.js middleware hardening" gets back both a published skill it can buy now and an open RFS it could back.
+**Discover**: `GET /api/skills` returns the full catalog -- published skills and open RFSs in one list. Filter by status, tags, or keyword. An agent looking for "Next.js middleware hardening" gets back both a published skill it can buy now and an open RFS it could back.
 
 **Buy**: `GET /api/skills/[id]/content` is gated by MPP. Agent sends request, gets a 402 challenge, signs a sub-$0.01 payment, retries, gets the skill file. No API keys. No account creation. Just HTTP and a wallet.
 
@@ -90,9 +90,13 @@ Sub-cent transactions are the whole reason MPP exists. Stripe takes $0.30 minimu
 
 **RFS** -- title, description, scope, funding threshold, current amount, status (`open` | `funded` | `fulfilled` | `published`), author (user who filed it), claimant (user who claimed it, nullable).
 
+**RFS tags** -- short keyword tags used for catalog filtering (`auth`, `nextjs`, `graphql`, etc).
+
 **Contribution** -- links a user to an RFS with an amount. Tracked to determine backer access.
 
 **Skill** -- the delivered content. Linked 1:1 to a fulfilled/published RFS. Markdown body, metadata.
+
+**Skill tags** -- inherited from RFS and optionally extended on submit.
 
 **Purchase** -- a sub-$0.01 MPP transaction from a non-backer to access a published skill.
 
@@ -115,6 +119,9 @@ API (human + agent)
 /api/rfs/[id]               GET: RFS status + funding progress
 /api/rfs/[id]/fund          POST: contribute toward threshold (MPP-gated)
 /api/rfs/[id]/claim         POST: researcher claims a funded RFS
+/api/rfs/[id]/submit        POST: claimant submits skill content
+/api/rfs/[id]/payout/claim  POST: claimant claims payout after publish
+/api/me/wallet              POST: link or update payout wallet
 ```
 
 ### Non-goals (hackathon scope)
@@ -138,14 +145,16 @@ These are explicit implementation decisions for backend and agent-facing APIs.
 7. **Minimum contribution**: no practical minimum beyond positive payment; enforce `>= 1` base unit.
 8. **Purchase pricing**: researcher sets fixed per-skill `purchasePriceBaseUnits` for non-backers.
 9. **MPP strategy**:
-   - `/api/skills/[id]/fund`: one-time `charge` intent in v1.
-   - `/api/skills/[id]/buy`: one-time `charge` intent.
-   - session-based MPP is deferred to post-hackathon.
+- `/api/rfs/[id]/fund`: one-time `charge` intent in v1.
+- `/api/skills/[id]/content`: one-time `charge` intent for non-entitled callers.
+- session-based MPP is deferred to post-hackathon.
 10. **Agent protocol contract**: authenticated endpoints return `401` before `402`; payment challenges only for authenticated callers.
 11. **Payout fee model**: payout is `99%` to researcher, `1%` platform fee.
 12. **Content entitlement**: if caller already has `AccessGrant`, return content without requiring another payment.
 13. **Funding amount input**: `/fund` uses caller-provided amount per request (validated server-side).
 14. **Claim model**: open bounty claim; any authenticated user can claim a funded RFS and first atomic claim wins.
+15. **Purchase revenue model**: non-backer purchases also split `99%` researcher / `1%` platform fee.
+16. **Wallet lifecycle**: users can sign up without a wallet; payout claim requires a linked payout wallet address.
 
 ## Backend domain model refinement
 
@@ -175,6 +184,7 @@ These are explicit implementation decisions for backend and agent-facing APIs.
 4. A user can access skill content only with an `AccessGrant`.
 5. A `challengeId` is single-use (replay-protected).
 6. Payout claim requires ledger row in `claimable` state.
+7. Payout claim is idempotent and can only succeed once per claimable balance version.
 
 ## API contract refinement (backend + agent-facing)
 
@@ -196,16 +206,19 @@ These are explicit implementation decisions for backend and agent-facing APIs.
 - `POST /api/rfs/[id]/payout/claim`
   - researcher claims payout after publish
   - records payout receipt and marks payout ledger as `claimed`
+- `POST /api/me/wallet`
+  - user links or updates payout wallet address
 
 ### MPP endpoint behavior
 
-For `/fund` and `/buy` flows:
+For `/fund` and paid `/content` flows:
 
 1. Validate auth first (`401` if unauthenticated).
 2. If payment is required and missing, return `402` challenge.
 3. On credential retry, verify payment and apply state change atomically.
 4. Persist `challengeId` + receipt reference to prevent replay.
 5. Return deterministic JSON for agents: `status`, `resourceId`, `accessGranted`, `nextState`.
+6. Validate payment currency matches expected token address.
 
 ## Convex + BetterAuth implementation constraints
 

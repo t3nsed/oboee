@@ -2,6 +2,7 @@ import { OBOE_ASCII } from "@/lib/constants"
 import { rfsList } from "@/lib/mock-data"
 import { RFSRow } from "@/components/rfs-row"
 import { AsciiBox } from "@/components/ascii-box"
+import { CopyBox } from "@/components/copy-box"
 
 export default function Home() {
   const openRequests = rfsList.filter(r => r.status === 'open')
@@ -13,19 +14,17 @@ export default function Home() {
         <pre className="text-[15px] tracking-[-1px] leading-[125%] text-gray-400 select-none whitespace-pre font-[family-name:var(--font-fira-mono)]">
           {OBOE_ASCII}
         </pre>
-        <p className="text-[19px] tracking-tight text-gray-900 font-mono font-medium uppercase mt-4">
+        <p className="text-[19px] tracking-tight text-gray-900 font-mono font-medium uppercase mt-6">
           Crowdfunded agent skills
         </p>
-        <p className="text-gray-500 text-lg leading-relaxed tracking-tight mt-3">
-          Security researchers write deep, specialized skill files. Developers
-          crowdfund the work. Agents buy the results for fractions of a cent.
-        </p>
-        <div className="bg-gray-50 rounded-md px-4 py-3 font-mono text-sm mt-6 flex items-center justify-between">
-          <code>
-            <span className="text-muted-foreground">$</span>
-            <span className="ml-[1ch]">curl oboe.dev/api/skills</span>
-          </code>
-          <span className="text-xs text-muted-foreground">copy</span>
+        <div className="mt-8 space-y-1.5">
+          <p className="text-[10px] font-mono uppercase text-muted-foreground tracking-wide">
+            paste this into your agent
+          </p>
+          <CopyBox text="Read https://oboe.sh/SKILL.md and follow the instructions to set up oboe" />
+          <a href="https://mpp.dev" className="inline-block text-[10px] font-mono text-muted-foreground underline hover:text-foreground transition-colors duration-150 pt-0.5">
+            learn more about MPP by Tempo
+          </a>
         </div>
       </div>
 

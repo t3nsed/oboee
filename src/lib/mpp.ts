@@ -11,23 +11,41 @@ import { Mppx, tempo } from "mppx/nextjs";
 // Everything else stays the same. No code changes needed.
 // =============================================================================
 
-// Your wallet address that receives payments
-const RECIPIENT_ADDRESS =
-  "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const; // TODO: replace with your address
+const RECIPIENT_ADDRESS = process.env.MPP_RECIPIENT_ESCROW_ADDRESS;
+const CURRENCY_ADDRESS = process.env.MPP_FUNDING_TOKEN_ADDRESS;
+const hexAddressPattern = /^0x[a-fA-F0-9]{40}$/;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-// TIP-20 token used for payments
-// Testnet: pathUSD
-// Mainnet: swap to real USDC address from token list
-const CURRENCY_ADDRESS =
-  "0x20c0000000000000000000000000000000000000" as const; // MIGRATION: swap for mainnet USDC
+const asHexAddress = (value: string | undefined): `0x${string}` | null => {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim();
+  if (!hexAddressPattern.test(normalized)) {
+    return null;
+  }
+
+  return normalized as `0x${string}`;
+};
+
+const recipientAddress = asHexAddress(RECIPIENT_ADDRESS) ?? ZERO_ADDRESS;
+const currencyAddress = asHexAddress(CURRENCY_ADDRESS) ?? ZERO_ADDRESS;
 
 export const mppx = Mppx.create({
   methods: [
     tempo({
-      currency: CURRENCY_ADDRESS,
-      recipient: RECIPIENT_ADDRESS,
+      currency: currencyAddress,
+      recipient: recipientAddress,
       // MIGRATION: uncomment for mainnet fee sponsorship
       // feePayer: privateKeyToAccount('0x...'),
     }),
   ],
 });
+
+type ChargeOptions = Parameters<typeof mppx.charge>[0];
+type RouteHandler = (request: Request) => Response | Promise<Response>;
+
+export const createChargeHandler =
+  (options: ChargeOptions) => (handler: RouteHandler) =>
+    mppx.charge(options)(handler);

@@ -1,0 +1,34 @@
+import { fetchQuery } from "convex/nextjs";
+
+import { api } from "../../../../convex/_generated/api";
+import { errorResponseFrom } from "../_lib/responses";
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+
+    const status = searchParams.get("status") ?? undefined;
+    const q = searchParams.get("q") ?? undefined;
+    const authorId = searchParams.get("authorId") ?? undefined;
+
+    const repeatedTags = searchParams.getAll("tags");
+    const csvTags = searchParams
+      .get("tags")
+      ?.split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+    const tags = (repeatedTags.length > 0 ? repeatedTags : csvTags) ?? undefined;
+
+    const result = await fetchQuery(api.skills.list, {
+      status:
+        status === "open" || status === "funded" || status === "published" ? status : undefined,
+      q,
+      authorId,
+      tags,
+    });
+
+    return Response.json(result);
+  } catch (error) {
+    return errorResponseFrom(error);
+  }
+}

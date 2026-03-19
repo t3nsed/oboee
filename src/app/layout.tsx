@@ -6,6 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Oboe",
   description: "Crowdfunded agent skills marketplace",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({
