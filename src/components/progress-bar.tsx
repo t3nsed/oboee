@@ -6,8 +6,8 @@ interface ProgressBarProps {
 
 export function ProgressBar({ current, goal, className }: ProgressBarProps) {
   const pct = goal > 0 ? Math.min(current / goal, 1) : 0
-  const filled = Math.round(pct * 20)
-  const empty = 20 - filled
+  const filled = Math.round(pct * 16)
+  const empty = 16 - filled
   const bar = "█".repeat(filled) + "░".repeat(empty)
 
   return (

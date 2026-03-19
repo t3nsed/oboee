@@ -1,6 +1,7 @@
 import Link from "next/link"
 import type { RFS } from "@/lib/types"
 import { StatusBadge } from "./status-badge"
+import { CopyId } from "./copy-id"
 
 interface RFSRowProps {
   rfs: RFS
@@ -23,8 +24,12 @@ export function RFSRow({ rfs, rank }: RFSRowProps) {
       <span className="w-28 text-right font-mono text-xs text-muted-foreground shrink-0">
         ${rfs.currentAmount} / ${rfs.fundingThreshold}
       </span>
-      <span className="text-xs text-muted-foreground w-24 truncate shrink-0">
-        {rfs.authorLabel ?? rfs.authorId.slice(0, 8)}
+      <span className="w-24 shrink-0">
+        {rfs.authorLabel ? (
+          <span className="text-xs text-muted-foreground">{rfs.authorLabel}</span>
+        ) : (
+          <CopyId id={rfs.authorId} className="text-xs" />
+        )}
       </span>
     </Link>
   )

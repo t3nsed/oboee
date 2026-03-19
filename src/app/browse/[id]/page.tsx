@@ -6,6 +6,7 @@ import { AsciiBox } from "@/components/ascii-box"
 import { ProgressBar } from "@/components/progress-bar"
 import { StatusBadge } from "@/components/status-badge"
 import { RfsActions } from "@/components/rfs-actions"
+import { CopyId } from "@/components/copy-id"
 import { baseUnitsToNumber } from "@/lib/view-models"
 
 export async function generateMetadata({
@@ -59,15 +60,16 @@ export default async function Page({
   const displayStatus = rfs.status === "cancelled" ? "fulfilled" : rfs.status
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10 my-8 max-w-4xl">
-      <div>
+    <div className="flex flex-col lg:flex-row gap-8 my-8">
+      <div className="flex-1 min-w-0">
         <h1 className="text-2xl font-medium tracking-tight break-words">{rfs.title}</h1>
         <div className="mt-2">
           <StatusBadge status={displayStatus} />
         </div>
-        <p className="text-sm text-muted-foreground font-mono mt-1">
-          by {rfs.authorUserId.slice(0, 8)}...
-        </p>
+        <div className="text-sm font-mono mt-1 flex items-center gap-1">
+          <span className="text-muted-foreground">by</span>
+          <CopyId id={rfs.authorUserId} className="text-sm" />
+        </div>
 
         <AsciiBox title="scope" className="mt-6">
           <p className="text-sm leading-relaxed break-words">{rfs.scope}</p>
@@ -87,7 +89,7 @@ export default async function Page({
           )}
       </div>
 
-      <div>
+      <div className="lg:w-72 lg:shrink-0 lg:sticky lg:top-20 lg:self-start">
         <AsciiBox title="funding">
           <ProgressBar current={currentAmount} goal={fundingThreshold} />
 
@@ -123,7 +125,7 @@ export default async function Page({
                   key={c.id}
                   className="flex justify-between font-mono text-sm"
                 >
-                  <span className="truncate">{c.backerUserId.slice(0, 8)}...</span>
+                  <CopyId id={c.backerUserId} className="text-sm" />
                   <span>${baseUnitsToNumber(c.amountBaseUnits).toFixed(2)}</span>
                 </div>
               )
