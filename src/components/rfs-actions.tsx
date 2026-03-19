@@ -35,7 +35,7 @@ export function RfsActions({
   skillId,
   hasSkill,
 }: RfsActionsProps) {
-  const [fundAmount, setFundAmount] = useState("0.10")
+  const [fundAmount, setFundAmount] = useState("0.003")
   const [content, setContent] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)

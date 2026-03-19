@@ -1,12 +1,13 @@
 import { Credential } from "mppx";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 
 import { api } from "../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 import { errorResponse, errorResponseFrom } from "@/app/api/_lib/responses";
-import { fetchAuthMutation, fetchAuthQuery, isAuthenticated } from "@/lib/auth-server";
 import { mppx } from "@/lib/mpp";
 
 const MPP_DECIMALS = 6;
+const MAX_TEST_AMOUNT_BASE_UNITS = BigInt(9_000);
 
 const formatBaseUnits = (value: bigint) => {
   const scale = BigInt(10) ** BigInt(MPP_DECIMALS);
@@ -16,14 +17,10 @@ const formatBaseUnits = (value: bigint) => {
 };
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
-  if (!(await isAuthenticated())) {
-    return errorResponse("UNAUTHORIZED", "Authentication required.", 401);
-  }
-
   try {
     const { id } = await context.params;
     const skillId = id as Id<"skills">;
-    const access = await fetchAuthQuery(api.purchases.checkAccess, { skillId });
+    const access = await fetchQuery(api.purchases.checkAccess, { skillId });
 
     if (!access.skill) {
       return errorResponse("NOT_FOUND", "Skill not found.", 404);
@@ -44,7 +41,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       return errorResponse("INVALID_STATE", "Skill is not available for purchase.", 409);
     }
 
-    const chargeAmount = formatBaseUnits(access.skill.purchasePriceBaseUnits);
+    const chargeAmount = formatBaseUnits(
+      access.skill.purchasePriceBaseUnits > MAX_TEST_AMOUNT_BASE_UNITS
+        ? MAX_TEST_AMOUNT_BASE_UNITS
+        : access.skill.purchasePriceBaseUnits,
+    );
     const paidHandler = mppx.charge({ amount: chargeAmount })(async (paidRequest: Request) => {
       const credential = Credential.fromRequest(paidRequest);
       const challengeRequest = credential.challenge.request as {
@@ -78,7 +79,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
             ? rawPayload.signature
             : null;
 
-      const purchase = await fetchAuthMutation(api.purchases.recordPurchase, {
+      const purchase = await fetchMutation(api.purchases.recordPurchase, {
         skillId,
         amountBaseUnits: BigInt(challengeAmount),
         currencyAddress: currencyAddressRaw,
@@ -86,7 +87,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         receiptReference: payloadReceiptReference ?? credential.challenge.id,
       });
 
-      const refreshed = await fetchAuthQuery(api.purchases.checkAccess, { skillId });
+      const refreshed = await fetchQuery(api.purchases.checkAccess, { skillId });
       if (!refreshed.skill) {
         return errorResponse("NOT_FOUND", "Skill not found.", 404);
       }

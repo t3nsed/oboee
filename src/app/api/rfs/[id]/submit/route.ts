@@ -4,6 +4,8 @@ import { fetchAuthMutation, isAuthenticated } from "@/lib/auth-server";
 
 import { errorResponse, errorResponseFrom, okWriteResponse } from "../../../_lib/responses";
 
+const MAX_TEST_AMOUNT_BASE_UNITS = BigInt(9_000);
+
 const parseBaseUnits = (value: unknown): bigint | null => {
   if (typeof value === "bigint") {
     return value;
@@ -42,6 +44,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const purchasePriceBaseUnits = parseBaseUnits(body.purchasePriceBaseUnits);
     if (purchasePriceBaseUnits === null) {
       return errorResponse("INVALID_ARGUMENT", "purchasePriceBaseUnits must be an integer string.", 400);
+    }
+    if (purchasePriceBaseUnits > MAX_TEST_AMOUNT_BASE_UNITS) {
+      return errorResponse(
+        "INVALID_ARGUMENT",
+        "For MVP testing, purchasePriceBaseUnits must be below $0.01.",
+        400,
+      );
     }
 
     const { id } = await context.params;

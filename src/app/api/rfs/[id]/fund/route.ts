@@ -1,13 +1,14 @@
 import { Credential } from "mppx";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 
 import { api } from "../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 import { errorResponse, errorResponseFrom, okWriteResponse } from "@/app/api/_lib/responses";
-import { fetchAuthMutation, fetchAuthQuery, isAuthenticated } from "@/lib/auth-server";
 import { mppx } from "@/lib/mpp";
 
 const MPP_DECIMALS = 6;
 const AMOUNT_DECIMAL_PATTERN = /^\d+(?:\.\d+)?$/;
+const MAX_TEST_AMOUNT_BASE_UNITS = BigInt(9_000);
 
 const parseAmountStringToBaseUnits = (amount: string): bigint | null => {
   const normalized = amount.trim();
@@ -25,10 +26,6 @@ const parseAmountStringToBaseUnits = (amount: string): bigint | null => {
 };
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  if (!(await isAuthenticated())) {
-    return errorResponse("UNAUTHORIZED", "Authentication required.", 401);
-  }
-
   try {
     const requestForBody = request.clone();
     const body = (await requestForBody.json()) as { amount?: unknown };
@@ -40,10 +37,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (amountBaseUnitsFromInput === null || amountBaseUnitsFromInput < BigInt(1)) {
       return errorResponse("INVALID_ARGUMENT", "amount must be a positive decimal string.", 400);
     }
+    if (amountBaseUnitsFromInput > MAX_TEST_AMOUNT_BASE_UNITS) {
+      return errorResponse(
+        "INVALID_ARGUMENT",
+        "For MVP testing, amount must be below $0.01.",
+        400,
+      );
+    }
 
     const { id } = await context.params;
     const rfsId = id as Id<"rfs">;
-    const rfsDetail = await fetchAuthQuery(api.rfs.get, { rfsId });
+    const rfsDetail = await fetchQuery(api.rfs.get, { rfsId });
     if (!rfsDetail.canFund || rfsDetail.rfs.status !== "open") {
       return errorResponse("INVALID_STATE", "RFS can only be funded while open.", 409);
     }
@@ -87,7 +91,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             ? rawPayload.signature
             : null;
 
-      const result = await fetchAuthMutation(api.contributions.recordContribution, {
+      const result = await fetchMutation(api.contributions.recordContribution, {
         rfsId,
         amountBaseUnits: BigInt(challengeAmount),
         currencyAddress: currencyAddressRaw,

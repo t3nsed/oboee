@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 
-import { mutation, query, type MutationCtx } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
 
 const skillDocValidator = v.object({
@@ -14,17 +14,6 @@ const skillDocValidator = v.object({
   purchasePriceBaseUnits: v.int64(),
   status: v.union(v.literal("draft"), v.literal("submitted"), v.literal("published")),
 });
-
-const requireAuthedUserId = async (ctx: MutationCtx) => {
-  const user = await authComponent.safeGetAuthUser(ctx);
-  if (!user) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Authentication required.",
-    });
-  }
-  return user._id;
-};
 
 const computeFeeSplit = (grossAmountBaseUnits: bigint) => {
   const platformFeeBaseUnits = grossAmountBaseUnits / BigInt(100);
@@ -43,9 +32,11 @@ export const recordPurchase = mutation({
   returns: v.object({
     purchaseId: v.id("purchases"),
     accessGranted: v.boolean(),
+    buyerUserId: v.string(),
   }),
   handler: async (ctx, args) => {
-    const buyerUserId = await requireAuthedUserId(ctx);
+    const user = await authComponent.safeGetAuthUser(ctx);
+    const buyerUserId = user?._id ?? `agent:${args.challengeId.slice(0, 18)}`;
 
     const skill = await ctx.db.get(args.skillId);
     if (!skill) {
@@ -117,6 +108,7 @@ export const recordPurchase = mutation({
     return {
       purchaseId,
       accessGranted: true,
+      buyerUserId,
     };
   },
 });

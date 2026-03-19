@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 
-import { mutation, type MutationCtx } from "./_generated/server";
+import { mutation } from "./_generated/server";
 import { authComponent } from "./auth";
 
 const rfsStatusValidator = v.union(
@@ -10,17 +10,6 @@ const rfsStatusValidator = v.union(
   v.literal("published"),
   v.literal("cancelled"),
 );
-
-const requireAuthedUserId = async (ctx: MutationCtx) => {
-  const user = await authComponent.safeGetAuthUser(ctx);
-  if (!user) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Authentication required.",
-    });
-  }
-  return user._id;
-};
 
 export const recordContribution = mutation({
   args: {
@@ -33,9 +22,11 @@ export const recordContribution = mutation({
   returns: v.object({
     contributionId: v.id("contributions"),
     rfsNextState: rfsStatusValidator,
+    backerUserId: v.string(),
   }),
   handler: async (ctx, args) => {
-    const backerUserId = await requireAuthedUserId(ctx);
+    const user = await authComponent.safeGetAuthUser(ctx);
+    const backerUserId = user?._id ?? `agent:${args.challengeId.slice(0, 18)}`;
 
     const rfs = await ctx.db.get(args.rfsId);
     if (!rfs) {
@@ -108,6 +99,7 @@ export const recordContribution = mutation({
     return {
       contributionId,
       rfsNextState,
+      backerUserId,
     };
   },
 });

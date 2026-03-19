@@ -14,7 +14,7 @@ export function NewRfsForm() {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [scope, setScope] = useState("")
-  const [fundingGoal, setFundingGoal] = useState("50")
+  const [fundingGoal, setFundingGoal] = useState("0.009")
   const [tags, setTags] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -141,7 +141,7 @@ export function NewRfsForm() {
               <input
                 id="rfs-funding"
                 type="text"
-                placeholder="50.00"
+                placeholder="0.009"
                 className={`${inputStyle} max-w-xs`}
                 value={fundingGoal}
                 onChange={(event) => setFundingGoal(event.target.value)}
