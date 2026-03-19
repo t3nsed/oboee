@@ -69,7 +69,7 @@ export function NewRfsForm() {
   }
 
   return (
-    <section>
+    <section className="max-w-3xl mx-auto">
       <h1 className="text-xl font-medium tracking-tight mt-8 mb-6">new request for skill</h1>
 
       <AsciiBox title="create">

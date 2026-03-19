@@ -142,3 +142,61 @@ export const listSeededRfs = query({
       }));
   },
 });
+
+export const publishFundedSeedRfs = mutation({
+  args: {
+    rfsId: v.id("rfs"),
+  },
+  returns: v.object({
+    rfsId: v.id("rfs"),
+    skillId: v.id("skills"),
+    status: v.literal("published"),
+  }),
+  handler: async (ctx, args) => {
+    const rfs = await ctx.db.get(args.rfsId);
+    if (!rfs) {
+      throw new Error("RFS not found");
+    }
+    if (rfs.authorUserId !== "seed:researcher:redteam") {
+      throw new Error("Only seeded CVE RFS can be auto-published.");
+    }
+    if (rfs.status !== "funded" && rfs.status !== "published") {
+      throw new Error("RFS must be funded before publishing.");
+    }
+
+    const existingSkill = await ctx.db
+      .query("skills")
+      .withIndex("by_rfs", (q) => q.eq("rfsId", rfs._id))
+      .first();
+
+    if (existingSkill) {
+      if (rfs.status !== "published") {
+        await ctx.db.patch(rfs._id, { status: "published" });
+      }
+      return {
+        rfsId: rfs._id,
+        skillId: existingSkill._id,
+        status: "published" as const,
+      };
+    }
+
+    const skillId = await ctx.db.insert("skills", {
+      rfsId: rfs._id,
+      authorUserId: "seed:researcher:redteam",
+      contentMarkdown:
+        "# CVE-2023-44487 linked response playbook\n\n## Goal\nStabilize edge and origin during Rapid Reset abuse while preserving forensic visibility.\n\n## Steps\n1. Enable per-connection stream reset thresholds.\n2. Gate expensive origin paths behind adaptive concurrency limits.\n3. Emit challenge-id linked logs at edge and origin for replay analysis.\n4. Roll staged ruleset updates with rollback guardrails.\n",
+      summary: "Published CVE-linked response skill after successful funding.",
+      tags: ["cve-2023-44487", "http2", "dos", "gateway"],
+      purchasePriceBaseUnits: BigInt(5_000),
+      status: "published",
+    });
+
+    await ctx.db.patch(rfs._id, { status: "published" });
+
+    return {
+      rfsId: rfs._id,
+      skillId,
+      status: "published" as const,
+    };
+  },
+});

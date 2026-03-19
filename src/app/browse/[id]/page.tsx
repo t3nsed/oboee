@@ -59,25 +59,25 @@ export default async function Page({
   const displayStatus = rfs.status === "cancelled" ? "fulfilled" : rfs.status
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 my-8">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10 my-8 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-medium tracking-tight">{rfs.title}</h1>
+        <h1 className="text-2xl font-medium tracking-tight break-words">{rfs.title}</h1>
         <div className="mt-2">
           <StatusBadge status={displayStatus} />
         </div>
         <p className="text-sm text-muted-foreground font-mono mt-1">
-          by {rfs.authorUserId.slice(0, 10)}
+          by {rfs.authorUserId.slice(0, 8)}...
         </p>
 
         <AsciiBox title="scope" className="mt-6">
-          <p className="text-sm leading-relaxed">{rfs.scope}</p>
-          <p className="text-sm leading-relaxed mt-2">{rfs.description}</p>
+          <p className="text-sm leading-relaxed break-words">{rfs.scope}</p>
+          <p className="text-sm leading-relaxed mt-2 break-words">{rfs.description}</p>
         </AsciiBox>
 
         {(rfs.status === "published" || rfs.status === "fulfilled") &&
           skill && (
             <AsciiBox title="skill preview" className="mt-6">
-              <p className="text-sm leading-relaxed">
+              <p className="text-sm leading-relaxed break-words">
                 {skill.contentMarkdown.slice(0, 200)}...
               </p>
               <p className="text-xs text-muted-foreground mt-2 font-mono">
@@ -123,7 +123,7 @@ export default async function Page({
                   key={c.id}
                   className="flex justify-between font-mono text-sm"
                 >
-                  <span>{c.backerUserId.slice(0, 10)}</span>
+                  <span className="truncate">{c.backerUserId.slice(0, 8)}...</span>
                   <span>${baseUnitsToNumber(c.amountBaseUnits).toFixed(2)}</span>
                 </div>
               )

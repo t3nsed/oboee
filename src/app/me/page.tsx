@@ -70,9 +70,9 @@ export default async function ProfilePage() {
               return (
                 <div
                   key={contrib.id}
-                  className="flex items-center justify-between py-1.5 font-mono text-sm"
+                  className="flex items-center justify-between py-1.5 font-mono text-sm gap-4 min-w-0"
                 >
-                  <span className="truncate">{contrib.rfsTitle}</span>
+                  <span className="truncate min-w-0">{contrib.rfsTitle}</span>
                   <span className="text-muted-foreground ml-4 shrink-0">
                     ${baseUnitsToNumber(contrib.amountBaseUnits).toFixed(2)}
                   </span>
@@ -94,9 +94,9 @@ export default async function ProfilePage() {
               return (
                 <div
                   key={purchase.id}
-                  className="flex items-center justify-between py-1.5 font-mono text-sm"
+                  className="flex items-center justify-between py-1.5 font-mono text-sm gap-4 min-w-0"
                 >
-                  <span className="truncate">{purchase.skillTitle}</span>
+                  <span className="truncate min-w-0">{purchase.skillTitle}</span>
                   <span className="text-muted-foreground ml-4 shrink-0">
                     ${baseUnitsToNumber(purchase.amountBaseUnits).toFixed(3)}
                   </span>
