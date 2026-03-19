@@ -14,6 +14,7 @@ import type * as http from "../http.js";
 import type * as payouts from "../payouts.js";
 import type * as purchases from "../purchases.js";
 import type * as rfs from "../rfs.js";
+import type * as seeds from "../seeds.js";
 import type * as skills from "../skills.js";
 import type * as users from "../users.js";
 
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   payouts: typeof payouts;
   purchases: typeof purchases;
   rfs: typeof rfs;
+  seeds: typeof seeds;
   skills: typeof skills;
   users: typeof users;
 }>;

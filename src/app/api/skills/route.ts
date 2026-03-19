@@ -3,6 +3,24 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "../../../../convex/_generated/api";
 import { errorResponseFrom } from "../_lib/responses";
 
+const toJsonSafe = (value: unknown): unknown => {
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => toJsonSafe(item));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+        key,
+        toJsonSafe(item),
+      ]),
+    );
+  }
+  return value;
+};
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -27,7 +45,7 @@ export async function GET(request: Request) {
       tags,
     });
 
-    return Response.json(result);
+    return Response.json(toJsonSafe(result));
   } catch (error) {
     return errorResponseFrom(error);
   }
