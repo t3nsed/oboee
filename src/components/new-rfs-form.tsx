@@ -55,6 +55,11 @@ export function NewRfsForm() {
         resourceId?: string
       }
 
+      if (response.status === 401) {
+        router.push("/sign-in?next=%2Fnew")
+        return
+      }
+
       if (!response.ok || payload.status !== "ok" || !payload.resourceId) {
         setError(payload.message ?? payload.code ?? "Failed to create request.")
         return
